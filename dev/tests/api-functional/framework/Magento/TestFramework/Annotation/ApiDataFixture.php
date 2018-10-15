@@ -12,6 +12,8 @@
 
 namespace Magento\TestFramework\Annotation;
 
+use Magento\Framework\Component\ComponentRegistrar;
+
 class ApiDataFixture
 {
     /**
@@ -89,7 +91,7 @@ class ApiDataFixture
                 if (is_callable($fixtureMethod)) {
                     $result[] = $fixtureMethod;
                 } else {
-                    $result[] = $this->_fixtureBaseDir . '/' . $fixture;
+                    $result[] = $fixture;
                 }
             }
         }
@@ -108,7 +110,7 @@ class ApiDataFixture
             if (is_callable($fixture)) {
                 call_user_func($fixture);
             } else {
-                require $fixture;
+                require $this->getFixturePath($fixture);
             }
         } catch (\Exception $e) {
             throw new \Exception(
@@ -120,6 +122,39 @@ class ApiDataFixture
             );
         }
         $this->_appliedFixtures[] = $fixture;
+    }
+
+    /**
+     * Get fixture path.
+     *
+     * @param string $fixture
+     * @return string
+     * @throws \LogicException If specified $fixture cannot be found
+     */
+    private function getFixturePath(string $fixture): string
+    {
+        if(file_exists($fixture)) {
+            return $fixture;
+        } elseif (file_exists($this->_fixtureBaseDir . '/' . $fixture)) {
+            return $this->_fixtureBaseDir . '/' . $fixture;
+        }
+
+        $fixturePathParts = explode('::', $fixture);
+        if (count($fixturePathParts) < 2) {
+            throw new \LogicException("Fixture '{$fixture}' not found.'");
+        }
+        $moduleName = $fixturePathParts[0];
+        $relativePath = $fixturePathParts[1];
+
+        $objectManager = \Magento\TestFramework\Helper\Bootstrap::getObjectManager();
+        /** @var ComponentRegistrar $componentRegistrar */
+        $componentRegistrar = $objectManager->get(ComponentRegistrar::class);
+        $modulePath = $componentRegistrar->getPath(ComponentRegistrar::MODULE, $moduleName);
+        if (!$modulePath) {
+            throw new \LogicException("Fixture '{$fixture}' not found.'");
+        }
+
+        return $modulePath . '/' . $relativePath;
     }
 
     /**
@@ -152,7 +187,7 @@ class ApiDataFixture
                     $this->_applyOneFixture($fixture);
                 }
             } else {
-                $fileInfo = pathinfo($fixture);
+                $fileInfo = pathinfo($this->getFixturePath($fixture));
                 $extension = '';
                 if (isset($fileInfo['extension'])) {
                     $extension = '.' . $fileInfo['extension'];

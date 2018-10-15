@@ -17,6 +17,11 @@
     <!-- Test suites definition -->
     <testsuites>
         <testsuite name="Magento GraphQL web API functional tests">
+
+            <!-- Run GraphQL tests defined as modules -->
+            <directory suffix="Test.php">../../../app/code/Magento/*/GraphQl</directory>
+            <directory suffix="Test.php">../../../vendor/magento/*/GraphQl</directory>
+
             <directory suffix="Test.php">testsuite/Magento/GraphQl</directory>
         </testsuite>
     </testsuites>
