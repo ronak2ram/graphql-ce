@@ -18,6 +18,7 @@ use Magento\Framework\GraphQl\Schema\SchemaGeneratorInterface;
 use Magento\Framework\Serialize\SerializerInterface;
 use Magento\Framework\Webapi\Response;
 use Magento\Framework\GraphQl\Query\Fields as QueryFields;
+use Psr\Log\LoggerInterface;
 
 /**
  * Front controller for web API GraphQL area.
@@ -67,6 +68,11 @@ class GraphQl implements FrontControllerInterface
     private $queryFields;
 
     /**
+     * @var LoggerInterface
+     */
+    private $logger;
+
+    /**
      * @param Response $response
      * @param SchemaGeneratorInterface $schemaGenerator
      * @param SerializerInterface $jsonSerializer
@@ -84,7 +90,8 @@ class GraphQl implements FrontControllerInterface
         ExceptionFormatter $graphQlError,
         ContextInterface $resolverContext,
         HttpRequestProcessor $requestProcessor,
-        QueryFields $queryFields
+        QueryFields $queryFields,
+        LoggerInterface $logger
     ) {
         $this->response = $response;
         $this->schemaGenerator = $schemaGenerator;
@@ -94,6 +101,7 @@ class GraphQl implements FrontControllerInterface
         $this->resolverContext = $resolverContext;
         $this->requestProcessor = $requestProcessor;
         $this->queryFields = $queryFields;
+        $this->logger = $logger;
     }
 
     /**
@@ -128,6 +136,13 @@ class GraphQl implements FrontControllerInterface
             $result['errors'][] = $this->graphQlError->create($error);
             $statusCode = ExceptionFormatter::HTTP_GRAPH_QL_SCHEMA_ERROR_STATUS;
         }
+
+        if (array_key_exists('errors',$result) && !empty($result['errors'])) {
+            foreach ($result['errors'] as $error) {
+                $this->logger->warning($error['message']);
+            }
+        }
+
         $this->response->setBody($this->jsonSerializer->serialize($result))->setHeader(
             'Content-Type',
             'application/json'
